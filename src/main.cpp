@@ -5,12 +5,10 @@
 #include <string>
 #include <sstream>
 #include <cctype>
-#include <filesystem>
 #include <cmath>
 #include <stdexcept>
 
 using namespace std;
-namespace fs = std::filesystem;
 
 struct Header {
     char idLength;
@@ -135,9 +133,9 @@ Image screen(Image a, Image b) {
     vector<Pixel> result;
     for (int i = 0; i < a.pixels.size(); i++) {
         Pixel px;
-        px.B = static_cast<unsigned char>((1 - (1 - a.pixels[i].B/255.0f)*(1 - b.pixels[i].B/255.0f)) * 255 + 0.5f);
-        px.G = static_cast<unsigned char>((1 - (1 - a.pixels[i].G/255.0f)*(1 - b.pixels[i].G/255.0f)) * 255 + 0.5f);
-        px.R = static_cast<unsigned char>((1 - (1 - a.pixels[i].R/255.0f)*(1 - b.pixels[i].R/255.0f)) * 255 + 0.5f);
+        px.B = static_cast<unsigned char>((1 - (1 - a.pixels[i].B / 255.0f) * (1 - b.pixels[i].B / 255.0f)) * 255 + 0.5f);
+        px.G = static_cast<unsigned char>((1 - (1 - a.pixels[i].G / 255.0f) * (1 - b.pixels[i].G / 255.0f)) * 255 + 0.5f);
+        px.R = static_cast<unsigned char>((1 - (1 - a.pixels[i].R / 255.0f) * (1 - b.pixels[i].R / 255.0f)) * 255 + 0.5f);
         result.push_back(px);
     }
     
@@ -156,9 +154,9 @@ Image overlay(Image base, Image layer) {
         };
         
         Pixel px;
-        px.B = static_cast<unsigned char>(calc(base.pixels[i].B/255.0f, layer.pixels[i].B/255.0f) * 255 + 0.5f);
-        px.G = static_cast<unsigned char>(calc(base.pixels[i].G/255.0f, layer.pixels[i].G/255.0f) * 255 + 0.5f);
-        px.R = static_cast<unsigned char>(calc(base.pixels[i].R/255.0f, layer.pixels[i].R/255.0f) * 255 + 0.5f);
+        px.B = static_cast<unsigned char>(calc(base.pixels[i].B / 255.0f, layer.pixels[i].B / 255.0f) * 255 + 0.5f);
+        px.G = static_cast<unsigned char>(calc(base.pixels[i].G / 255.0f, layer.pixels[i].G / 255.0f) * 255 + 0.5f);
+        px.R = static_cast<unsigned char>(calc(base.pixels[i].R / 255.0f, layer.pixels[i].R / 255.0f) * 255 + 0.5f);
         result.push_back(px);
     }
     
@@ -239,273 +237,121 @@ Image scaleBlue(Image img, float val) {
     return img;
 }
 
-Image combine(Image red, Image green, Image blue) {
-    for (int i = 0; i < red.pixels.size(); i++) {
-        red.pixels[i].G = green.pixels[i].G;
-        red.pixels[i].B = blue.pixels[i].B;
-    }
-    return red;
-}
-
-int main(int argc, char* argv[]) {
-    if (argc == 1 || (argc == 2 && string(argv[1]) == "--help")) {
-        cout << "Project 2: Image Processing, Fall 2023" << endl;
-        cout << "Usage:" << endl;
-        cout << "\t./project2.out [output] [firstImage] [mtd] [...]" << endl;
-        return 0;
-    }
-
-    if (argc < 3) {
-        cerr << "Invalid file name." << endl;
+int main(int argc, char** argv) {
+    if (argc < 4) {
+        cerr << "Usage: " << argv[0] << " <input.tga> <output.tga> <operation>" << endl;
         return 1;
     }
 
-    string outputPath = argv[1];
-    if (outputPath.length() < 4 || outputPath.substr(outputPath.length() - 4) != ".tga") {
-        cerr << "Invalid file name. Output file must have .tga extension." << endl;
+    string input = argv[1];
+    string output = argv[2];
+    string operation = argv[3];
+
+    ifstream ifile(input);
+    if (!ifile) {
+        cerr << "Input file does not exist." << endl;
         return 1;
     }
 
-    string inputPath = argv[2];
-    if (inputPath.length() < 4 || inputPath.substr(inputPath.length() - 4) != ".tga") {
-        cerr << "Invalid file name. Input file must have .tga extension." << endl;
-        return 1;
-    }
+    Image img = readImage(input);
 
-    Image trackingImage = readImage(inputPath);
-
-    int i = 3;
-    while (i < argc) {
-        string mtd = argv[i++];
-        
-        if (mtd == "multiply") {
-            if (i >= argc) {
-                cerr << "Missing argument for multiply operation." << endl;
-                return 1;
-            }
-            string otherPath = argv[i++];
-            if (otherPath.length() < 4 || otherPath.substr(otherPath.length() - 4) != ".tga") {
-                cerr << "Invalid argument, invalid file name for multiply operation." << endl;
-                return 1;
-            }
-            try {
-                Image otherImage = readImage(otherPath);
-                trackingImage = multiply(trackingImage, otherImage);
-            } catch (...) {
-                cerr << "Invalid argument, file does not exist: " << otherPath << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "subtract") {
-            if (i >= argc) {
-                cerr << "Missing argument for subtract operation." << endl;
-                return 1;
-            }
-            string otherPath = argv[i++];
-            if (otherPath.length() < 4 || otherPath.substr(otherPath.length() - 4) != ".tga") {
-                cerr << "Invalid argument, invalid file name for subtract operation." << endl;
-                return 1;
-            }
-            try {
-                Image otherImage = readImage(otherPath);
-                trackingImage = subtract(trackingImage, otherImage);
-            } catch (...) {
-                cerr << "Invalid argument, file does not exist: " << otherPath << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "screen") {
-            if (i >= argc) {
-                cerr << "Missing argument for screen operation." << endl;
-                return 1;
-            }
-            string otherPath = argv[i++];
-            if (otherPath.length() < 4 || otherPath.substr(otherPath.length() - 4) != ".tga") {
-                cerr << "Invalid argument, invalid file name for screen operation." << endl;
-                return 1;
-            }
-            try {
-                Image otherImage = readImage(otherPath);
-                trackingImage = screen(trackingImage, otherImage);
-            } catch (...) {
-                cerr << "Invalid argument, file does not exist: " << otherPath << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "overlay") {
-            if (i >= argc) {
-                cerr << "Missing argument for overlay operation." << endl;
-                return 1;
-            }
-            string otherPath = argv[i++];
-            if (otherPath.length() < 4 || otherPath.substr(otherPath.length() - 4) != ".tga") {
-                cerr << "Invalid argument, invalid file name for overlay operation." << endl;
-                return 1;
-            }
-            try {
-                Image otherImage = readImage(otherPath);
-                trackingImage = overlay(trackingImage, otherImage);
-            } catch (...) {
-                cerr << "Invalid argument, file does not exist: " << otherPath << endl;
-                return 1;
-            }
-        }
-        
-        else if (mtd == "flip") {
-            trackingImage = flip(trackingImage);
-        }
-
-        else if (mtd == "onlyred") {
-            trackingImage = onlyRed(trackingImage);
-        }
-
-        else if (mtd == "onlygreen") {
-            trackingImage = onlyGreen(trackingImage);
-        }
-
-        else if (mtd == "onlyblue") {
-            trackingImage = onlyBlue(trackingImage);
-        }
-
-        else if (mtd == "addred") {
-            if (i >= argc) {
-                cerr << "Missing argument for addred operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                int val = stoi(valStr);
-                trackingImage = addRed(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for addred, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for addred, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "addgreen") {
-            if (i >= argc) {
-                cerr << "Missing argument for addgreen operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                int val = stoi(valStr);
-                trackingImage = addGreen(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for addgreen, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for addgreen, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "addblue") {
-            if (i >= argc) {
-                cerr << "Missing argument for addblue operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                int val = stoi(valStr);
-                trackingImage = addBlue(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for addblue, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for addblue, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "scalered") {
-            if (i >= argc) {
-                cerr << "Missing argument for scalered operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                float val = stof(valStr);
-                trackingImage = scaleRed(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for scalered, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for scalered, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "scalegreen") {
-            if (i >= argc) {
-                cerr << "Missing argument for scalegreen operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                float val = stof(valStr);
-                trackingImage = scaleGreen(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for scalegreen, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for scalegreen, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "scaleblue") {
-            if (i >= argc) {
-                cerr << "Missing argument for scaleblue operation." << endl;
-                return 1;
-            }
-            string valStr = argv[i++];
-            try {
-                float val = stof(valStr);
-                trackingImage = scaleBlue(trackingImage, val);
-            } catch (const invalid_argument&) {
-                cerr << "Invalid argument for scaleblue, expected a number." << endl;
-                return 1;
-            } catch (const out_of_range&) {
-                cerr << "Invalid argument for scaleblue, number out of range." << endl;
-                return 1;
-            }
-        }
-
-        else if (mtd == "combine") {
-            if (i + 1 >= argc) {
-                cerr << "Missing arguments for combine operation. Need green and blue channel images." << endl;
-                return 1;
-            }
-            string greenPath = argv[i++];
-            string bluePath = argv[i++];
-            if (greenPath.length() < 4 || greenPath.substr(greenPath.length() - 4) != ".tga" ||
-                bluePath.length() < 4 || bluePath.substr(bluePath.length() - 4) != ".tga") {
-                cerr << "Invalid argument, invalid file name for combine operation." << endl;
-                return 1;
-            }
-            try {
-                Image greenImage = readImage(greenPath);
-                Image blueImage = readImage(bluePath);
-                trackingImage = combine(trackingImage, greenImage, blueImage);
-            } catch (...) {
-                cerr << "Invalid argument, file does not exist." << endl;
-                return 1;
-            }
-        }
-        
-        else {
-            cerr << "Invalid mtd name: " << mtd << endl;
+    if (operation == "multiply") {
+        if (argc < 5) {
+            cerr << "Missing second input image for multiply operation" << endl;
             return 1;
         }
+        string second_input = argv[4];
+        Image second_img = readImage(second_input);
+        img = multiply(img, second_img);
+    } 
+    else if (operation == "subtract") {
+        if (argc < 5) {
+            cerr << "Missing second input image for subtract operation" << endl;
+            return 1;
+        }
+        string second_input = argv[4];
+        Image second_img = readImage(second_input);
+        img = subtract(img, second_img);
+    }
+    else if (operation == "screen") {
+        if (argc < 5) {
+            cerr << "Missing second input image for screen operation" << endl;
+            return 1;
+        }
+        string second_input = argv[4];
+        Image second_img = readImage(second_input);
+        img = screen(img, second_img);
+    }
+    else if (operation == "overlay") {
+        if (argc < 5) {
+            cerr << "Missing second input image for overlay operation" << endl;
+            return 1;
+        }
+        string second_input = argv[4];
+        Image second_img = readImage(second_input);
+        img = overlay(img, second_img);
+    }
+    else if (operation == "flip") {
+        img = flip(img);
+    }
+    else if (operation == "onlyRed") {
+        img = onlyRed(img);
+    }
+    else if (operation == "onlyGreen") {
+        img = onlyGreen(img);
+    }
+    else if (operation == "onlyBlue") {
+        img = onlyBlue(img);
+    }
+    else if (operation == "addRed") {
+        if (argc < 5) {
+            cerr << "Missing value for addRed operation" << endl;
+            return 1;
+        }
+        int value = stoi(argv[4]);
+        img = addRed(img, value);
+    }
+    else if (operation == "addGreen") {
+        if (argc < 5) {
+            cerr << "Missing value for addGreen operation" << endl;
+            return 1;
+        }
+        int value = stoi(argv[4]);
+        img = addGreen(img, value);
+    }
+    else if (operation == "addBlue") {
+        if (argc < 5) {
+            cerr << "Missing value for addBlue operation" << endl;
+            return 1;
+        }
+        int value = stoi(argv[4]);
+        img = addBlue(img, value);
+    }
+    else if (operation == "scaleRed") {
+        if (argc < 5) {
+            cerr << "Missing scale factor for scaleRed operation" << endl;
+            return 1;
+        }
+        float scale = stof(argv[4]);
+        img = scaleRed(img, scale);
+    }
+    else if (operation == "scaleGreen") {
+        if (argc < 5) {
+            cerr << "Missing scale factor for scaleGreen operation" << endl;
+            return 1;
+        }
+        float scale = stof(argv[4]);
+        img = scaleGreen(img, scale);
+    }
+    else if (operation == "scaleBlue") {
+        if (argc < 5) {
+            cerr << "Missing scale factor for scaleBlue operation" << endl;
+            return 1;
+        }
+        float scale = stof(argv[4]);
+        img = scaleBlue(img, scale);
     }
 
-    writeImage(trackingImage, outputPath);
+    writeImage(img, output);
     return 0;
 }
